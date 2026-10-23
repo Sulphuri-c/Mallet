@@ -1,0 +1,57 @@
+{
+    "version": "1.0",
+    "geometry": [
+        {
+            "type": "geom_static",
+            "pos": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "size": [
+                8.0,
+                8.0,
+                8.0
+            ],
+            "rot": [
+                15.0,
+                285.0,
+                15.0
+            ],
+            "material": "CrackedLava",
+            "attributes": {
+                "material": "CrackedLava",
+                "can_collide": "true",
+                "cast_shadow": "true"
+            },
+            "io": []
+        }
+    ],
+    "proxies": [
+        {
+            "type": "wrd_player_start",
+            "pos": [
+                0,
+                -7,
+                2
+            ],
+            "size": [
+                2.0,
+                4.0,
+                2.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "material": "Plastic",
+            "attributes": {
+                "team": "Neutral",
+                "start_enabled": "true",
+                "mallet_id": ""
+            },
+            "io": []
+        }
+    ]
+}

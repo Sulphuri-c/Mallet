@@ -1,12 +1,12 @@
 # Mallet editor
 
-Mallet is an external Roblox studio editor similar to ***Rojo*** (another Roblox studio helper) heavily inspired by the *Source Engine*'s *"Hammer"* editor.
+Mallet is an external Roblox Studio editor similar to ***Rojo*** (another Roblox Studio tool) heavily inspired by the *Source Engine*'s *"Hammer"* editor.
 
 ## Architecture
 
 Mallet uses two separate halves.
  * *The application* half (Found here, on GitHub) which allows you to actually design your games and place your *Proxies* (Those are next paragraph), then sync to Roblox Studio via the:
- * *The plugin* half. Find it [Here!](https://www.bing.com/search?pglt=297&q=sorgy+broski+i+havent+coded+it+yet&cvid=d737763376bc4fefae8c4f07e06a3040&gs_lcrp=EgRlZGdlKgYIABBFGDkyBggAEEUYOdIBCDY4MzZqMGo3qAIAsAIA&FORM=ANNTA1&PC=U531) This is the interface which allows you to actually sync to roblox.
+ * *The plugin* half. Find it [Here!](https://www.bing.com/search?pglt=297&q=sorgy+broski+i+havent+coded+it+yet&cvid=d737763376bc4fefae8c4f07e06a3040&gs_lcrp=EgRlZGdlKgYIABBFGDkyBggAEEUYOdIBCDY4MzZqMGo3qAIAsAIA&FORM=ANNTA1&PC=U531) This is the interface which allows you to actually sync to Roblox.
 
 ## Proxies
 

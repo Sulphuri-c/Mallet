@@ -1,0 +1,13 @@
+{
+    "theme": "Regular",
+    "default_geometry": "geom_static",
+    "default_proxy": "wrd_player_start",
+    "keyboard_sounds": true,
+    "custom_music": true,
+    "custom_colors": {
+        "Background": "#222222",
+        "Sidebar": "#4A4A4A",
+        "Accent": "#7514ED",
+        "Grid Lines": "#3b3b3b"
+    }
+}
