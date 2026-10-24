@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import json
 import os
+from core.proxies import get_proxy_types_by_category
 
 CONFIG_FILE = "mallet_config.json"
 
@@ -15,7 +16,7 @@ class PreferencesWindow(ctk.CTkToplevel):
     def __init__(self, master, current_settings, on_save_callback, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title("Preferences")
-        self.geometry("450x650")
+        self.geometry("450x520")
         self.configure(fg_color="#222222")
 
         self.transient(master)
@@ -41,27 +42,42 @@ class PreferencesWindow(ctk.CTkToplevel):
         self.preset_menu.pack(fill="x", padx=10, pady=5)
 
         self.add_section_label("Default Tool Classes")
+        geom_classes = get_proxy_types_by_category("geometry") or ["geom_static"]
         self.default_geom_var = ctk.StringVar(value=self.settings.get("default_geometry", "geom_static"))
         self.geom_menu = ctk.CTkOptionMenu(self.scroll_frame,
-                                           values=["geom_static", "geom_dynamic", "geom_dambrick", "geom_log_trigger"],
+                                           values=geom_classes,
                                            variable=self.default_geom_var, fg_color="#222222", button_color="#222222",
                                            button_hover_color="#7514ED", text_color="#EEEEEE")
         self.geom_menu.pack(fill="x", padx=10, pady=2)
 
+        prx_classes = get_proxy_types_by_category("proxy") or ["wrd_player_start"]
         self.default_prx_var = ctk.StringVar(value=self.settings.get("default_proxy", "wrd_player_start"))
         self.prx_menu = ctk.CTkOptionMenu(self.scroll_frame,
-                                          values=["wrd_player_start", "wrd_light", "log_timer", "log_relay",
-                                                  "fx_particle", "sfx_regular", "sfx_oneshot"],
+                                          values=prx_classes,
                                           variable=self.default_prx_var, fg_color="#222222", button_color="#222222",
                                           button_hover_color="#7514ED", text_color="#EEEEEE")
         self.prx_menu.pack(fill="x", padx=10, pady=5)
 
         self.add_section_label("Editor & Transformation")
-        self.rot_snap_var = ctk.StringVar(value=str(self.settings.get("rotation_snap", "15")))
-        self.rot_menu = ctk.CTkOptionMenu(self.scroll_frame, values=["Off", "5", "15", "30", "45", "90"],
+
+        rot_row = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        rot_row.pack(fill="x", padx=10, pady=2)
+        ctk.CTkLabel(rot_row, text="Rotation Snap:", width=140, anchor="w", text_color="#EEEEEE").pack(side="left")
+
+        current_snap = str(self.settings.get("rotation_snap", "15"))
+        snap_display = f"{current_snap}°" if current_snap != "Off" else "Off"
+        self.rot_snap_var = ctk.StringVar(value=snap_display)
+
+        self.rot_menu = ctk.CTkOptionMenu(rot_row, values=["Off", "5°", "15°", "30°", "45°", "90°"],
                                           variable=self.rot_snap_var, fg_color="#222222", button_color="#222222",
                                           button_hover_color="#7514ED", text_color="#EEEEEE")
-        self.rot_menu.pack(fill="x", padx=10, pady=5)
+        self.rot_menu.pack(side="right", fill="x", expand=True)
+
+        self.show_io_var = ctk.BooleanVar(value=self.settings.get("show_io_lines", False))
+        self.show_io_checkbox = ctk.CTkCheckBox(self.scroll_frame, text="Show Visual I/O Connections",
+                                                variable=self.show_io_var, text_color="#EEEEEE", fg_color="#7514ED",
+                                                hover_color="#500AA6")
+        self.show_io_checkbox.pack(anchor="w", padx=15, pady=5)
 
         self.add_section_label("Audio & Immersion Settings")
 
@@ -115,11 +131,15 @@ class PreferencesWindow(ctk.CTkToplevel):
             self.preset_var.set("Custom")
 
     def save_preferences(self):
+        raw_snap = self.rot_snap_var.get()
+        clean_snap = "Off" if raw_snap == "Off" else raw_snap.replace("°", "")
+
         updated_settings = {
             "theme": self.preset_var.get(),
             "default_geometry": self.default_geom_var.get(),
             "default_proxy": self.default_prx_var.get(),
-            "rotation_snap": self.rot_snap_var.get(),
+            "rotation_snap": clean_snap,
+            "show_io_lines": self.show_io_var.get(),
             "keyboard_sounds": self.kbd_sound_var.get(),
             "custom_music": self.music_var.get(),
             "custom_colors": {k: v.get() for k, v in self.color_entries.items()}
@@ -144,6 +164,7 @@ def load_config():
         "default_geometry": "geom_static",
         "default_proxy": "wrd_player_start",
         "rotation_snap": "15",
+        "show_io_lines": False,
         "keyboard_sounds": False,
         "custom_music": True,
         "custom_colors": {

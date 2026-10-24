@@ -2,6 +2,8 @@
     "theme": "Regular",
     "default_geometry": "geom_static",
     "default_proxy": "wrd_player_start",
+    "rotation_snap": "15",
+    "show_io_lines": true,
     "keyboard_sounds": true,
     "custom_music": true,
     "custom_colors": {

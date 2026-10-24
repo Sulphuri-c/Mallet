@@ -1,6 +1,6 @@
 import customtkinter as ctk
+from tkinter import filedialog
 from core.proxies import get_all_proxy_types, get_proxy_definition, get_proxy_types_by_category
-from ui.io_window import IOWindow
 
 ROBLOX_MATERIALS = [
     "Air", "Asphalt", "Basalt", "Brick", "Cardboard", "Carpet", "CeramicTiles",
@@ -11,6 +11,56 @@ ROBLOX_MATERIALS = [
     "Rubber", "Salt", "Sand", "Sandstone", "Slate", "SmoothPlastic", "Snow", "Water",
     "Wood", "WoodPlanks"
 ]
+
+
+class FilepathEntry(ctk.CTkFrame):
+    def __init__(self, master, default_val="", attr_key="", **kwargs):
+        super().__init__(master, fg_color="transparent", **kwargs)
+        self.attr_key = attr_key
+
+        self.entry = ctk.CTkEntry(
+            self,
+            fg_color="#222222",
+            border_color="#7F7F7F",
+            text_color="#EEEEEE"
+        )
+        self.entry.insert(0, default_val)
+        self.entry.pack(side="left", fill="x", expand=True)
+
+        self.browse_btn = ctk.CTkButton(
+            self,
+            text="...",
+            width=28,
+            fg_color="#4A4A4A",
+            hover_color="#7514ED",
+            text_color="#EEEEEE",
+            command=self.browse_file
+        )
+        self.browse_btn.pack(side="right", padx=(4, 0))
+
+    def browse_file(self):
+        if "sound" in self.attr_key:
+            filetypes = [("Audio Files", "*.ogg *.mp3 *.wav"), ("All Files", "*.*")]
+        else:
+            filetypes = [
+                ("3D Mesh Files (.fbx, .obj)", "*.fbx *.obj"),
+                ("FBX Files", "*.fbx"),
+                ("OBJ Files", "*.obj"),
+                ("All Files", "*.*")
+            ]
+
+        path = filedialog.askopenfilename(filetypes=filetypes)
+        if path:
+            self.entry.delete(0, "end")
+            self.entry.insert(0, path)
+
+    def get(self):
+        return self.entry.get().strip()
+
+    def set(self, val):
+        self.entry.delete(0, "end")
+        self.entry.insert(0, val)
+
 
 class AutocompleteComboBox(ctk.CTkFrame):
     def __init__(self, master, options, default_val="", on_select_callback=None, **kwargs):
@@ -251,6 +301,13 @@ class PropertiesPanel(ctk.CTkFrame):
                     default_val=default_val
                 )
                 widget.pack(side="right", fill="x", expand=True)
+            elif attr_type == "filepath" or attr_key.endswith("_filepath"):
+                widget = FilepathEntry(
+                    row_frame,
+                    default_val=default_val,
+                    attr_key=attr_key
+                )
+                widget.pack(side="right", fill="x", expand=True)
             else:
                 widget = ctk.CTkEntry(
                     row_frame,
@@ -263,7 +320,7 @@ class PropertiesPanel(ctk.CTkFrame):
 
             self.attribute_widgets[attr_key] = widget
 
-        if class_name == "geom_static":
+        if class_name in ("geom_static", "msh_static", "msh_id_static") or "mallet_id" not in schema:
             self.io_btn.configure(state="disabled", text="I/O Disabled (Static)")
         else:
             self.io_btn.configure(state="normal", text=f"Edit I/O Connections ({len(self.pending_io)})")
@@ -279,6 +336,7 @@ class PropertiesPanel(ctk.CTkFrame):
     def open_io_window(self):
         if not self.current_target:
             return
+        from ui.io_window import IOWindow
         temp_target = self.current_target.copy()
         temp_target["io"] = self.pending_io
         if "mallet_id" in self.attribute_widgets:

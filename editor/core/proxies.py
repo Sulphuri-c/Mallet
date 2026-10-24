@@ -12,12 +12,6 @@ except ImportError:
 ASSET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "icons")
 
 PROXY_REGISTRY = {
-    #here is the script where i decided to start commenting my work. you're welcome, random GitHub user.
-
-    #|¬--------------------¬|
-    #|¬------GEOMETRY------¬|
-    #|¬--------------------¬|
-
     "geom_static": {
         "category": "geometry",
         "default_size": [4.0, 4.0, 4.0],
@@ -25,6 +19,8 @@ PROXY_REGISTRY = {
         "icon": None,
         "attributes": {
             "material": {"type": "material", "default": "Concrete"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "transparency": {"type": "float", "default": "0.0"},
             "can_collide": {"type": "bool", "default": "true"},
             "cast_shadow": {"type": "bool", "default": "true"}
         },
@@ -38,11 +34,13 @@ PROXY_REGISTRY = {
         "icon": None,
         "attributes": {
             "material": {"type": "material", "default": "Limestone"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "transparency": {"type": "float", "default": "0.0"},
             "can_collide": {"type": "bool", "default": "true"},
             "cast_shadow": {"type": "bool", "default": "true"},
             "mallet_id": {"type": "string", "default": ""}
         },
-        "inputs": ["Enable", "Disable", "Toggle", "SetMaterial", "Destroy"],
+        "inputs": ["Enable", "Disable", "Toggle", "SetMaterial", "SetColor", "Destroy"],
         "outputs": {
             "OnCollidedWith": "!collider",
             "OnDestroyed": "!destroyer"
@@ -55,6 +53,8 @@ PROXY_REGISTRY = {
         "icon": None,
         "attributes": {
             "material": {"type": "material", "default": "Concrete"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "transparency": {"type": "float", "default": "0.0"},
             "can_collide": {"type": "bool", "default": "true"},
             "cast_shadow": {"type": "bool", "default": "true"},
             "damage": {"type": "float", "default": "10"},
@@ -78,6 +78,7 @@ PROXY_REGISTRY = {
             "players_allowed": {"type": "bool", "default": "true"},
             "objects_allowed": {"type": "bool", "default": "true"},
             "npcs_allowed": {"type": "bool", "default": "true"},
+            "transparency": {"type": "float", "default": "0.0"},
             "mallet_id": {"type": "string", "default": ""}
         },
         "inputs": ["Enable", "Disable", "Toggle"],
@@ -88,9 +89,202 @@ PROXY_REGISTRY = {
         }
     },
 
-    # |¬-----------------¬|
-    # |¬------WORLD------¬|
-    # |¬-----------------¬|
+    "msh_static": {
+        "category": "proxy",
+        "default_size": [4.0, 4.0, 4.0],
+        "has_texture": True,
+        "icon": "msh_static.png",
+        "attributes": {
+            "mesh_filepath": {"type": "filepath", "default": ""},
+            "material": {"type": "material", "default": "SmoothPlastic"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "can_collide": {"type": "bool", "default": "true"},
+            "cast_shadow": {"type": "bool", "default": "true"}
+        },
+        "inputs": [],
+        "outputs": {}
+    },
+    "msh_dynamic": {
+        "category": "proxy",
+        "default_size": [4.0, 4.0, 4.0],
+        "has_texture": True,
+        "icon": "msh_dynamic.png",
+        "attributes": {
+            "mesh_filepath": {"type": "filepath", "default": ""},
+            "default_anim": {"type": "string", "default": ""},
+            "material": {"type": "material", "default": "SmoothPlastic"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "can_collide": {"type": "bool", "default": "true"},
+            "cast_shadow": {"type": "bool", "default": "true"},
+            "start_enabled": {"type": "bool", "default": "true"},
+            "mallet_id": {"type": "string", "default": ""}
+        },
+        "inputs": [
+            "Enable", "Disable", "Toggle", "SetMaterial", "SetColor",
+            "PlayAnimation", "StopAnimation", "Destroy"
+        ],
+        "outputs": {
+            "OnCollidedWith": "!collider",
+            "OnAnimFinished": "!anim_name",
+            "OnDestroyed": "!destroyer"
+        }
+    },
+    "msh_physics": {
+        "category": "proxy",
+        "default_size": [4.0, 4.0, 4.0],
+        "has_texture": True,
+        "icon": "msh_physics.png",
+        "attributes": {
+            "mesh_filepath": {"type": "filepath", "default": ""},
+            "collision_filepath": {"type": "filepath", "default": ""},
+            "material": {"type": "material", "default": "SmoothPlastic"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "can_collide": {"type": "bool", "default": "true"},
+            "cast_shadow": {"type": "bool", "default": "true"},
+            "mass": {"type": "float", "default": "10.0"},
+            "anchored": {"type": "bool", "default": "false"},
+            "start_enabled": {"type": "bool", "default": "true"},
+            "mallet_id": {"type": "string", "default": ""}
+        },
+        "inputs": [
+            "Enable", "Disable", "Toggle", "SetMaterial", "SetColor",
+            "Wake", "Sleep", "ApplyImpulse", "Destroy"
+        ],
+        "outputs": {
+            "OnCollidedWith": "!collider",
+            "OnDamaged": "!attacker",
+            "OnDestroyed": "!destroyer"
+        }
+    },
+    "msh_deform": {
+        "category": "proxy",
+        "default_size": [4.0, 4.0, 4.0],
+        "has_texture": True,
+        "icon": "msh_deform.png",
+        "attributes": {
+            "mesh_filepath": {"type": "filepath", "default": ""},
+            "material": {"type": "material", "default": "SmoothPlastic"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "can_collide": {"type": "bool", "default": "true"},
+            "cast_shadow": {"type": "bool", "default": "true"},
+            "deform_type": {"type": "string", "default": "softbody"},
+            "stiffness": {"type": "float", "default": "0.5"},
+            "damping": {"type": "float", "default": "0.1"},
+            "plasticity": {"type": "float", "default": "0.2"},
+            "start_enabled": {"type": "bool", "default": "true"},
+            "mallet_id": {"type": "string", "default": ""}
+        },
+        "inputs": [
+            "Enable", "Disable", "Toggle", "SetMaterial", "SetColor",
+            "DeformAtPoint", "PlayAnimation", "ResetMesh", "Destroy"
+        ],
+        "outputs": {
+            "OnCollidedWith": "!collider",
+            "OnDeformed": "!impact_force",
+            "OnDestroyed": "!destroyer"
+        }
+    },
+    "msh_physics_deform": {
+        "category": "proxy",
+        "default_size": [4.0, 4.0, 4.0],
+        "has_texture": True,
+        "icon": "msh_physics_deform.png",
+        "attributes": {
+            "mesh_filepath": {"type": "filepath", "default": ""},
+            "collision_filepath": {"type": "filepath", "default": ""},
+            "material": {"type": "material", "default": "SmoothPlastic"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "can_collide": {"type": "bool", "default": "true"},
+            "cast_shadow": {"type": "bool", "default": "true"},
+            "mass": {"type": "float", "default": "10.0"},
+            "anchored": {"type": "bool", "default": "false"},
+            "deform_type": {"type": "string", "default": "dent"},
+            "stiffness": {"type": "float", "default": "0.5"},
+            "damping": {"type": "float", "default": "0.1"},
+            "plasticity": {"type": "float", "default": "0.2"},
+            "start_enabled": {"type": "bool", "default": "true"},
+            "mallet_id": {"type": "string", "default": ""}
+        },
+        "inputs": [
+            "Enable", "Disable", "Toggle", "SetMaterial", "SetColor",
+            "Wake", "Sleep", "ApplyImpulse", "DeformAtPoint", "ResetMesh", "Destroy"
+        ],
+        "outputs": {
+            "OnCollidedWith": "!collider",
+            "OnDeformed": "!impact_force",
+            "OnDamaged": "!attacker",
+            "OnDestroyed": "!destroyer"
+        }
+    },
+
+    "msh_id_static": {
+        "category": "proxy",
+        "default_size": [4.0, 4.0, 4.0],
+        "has_texture": True,
+        "icon": "msh_id_static.png",
+        "attributes": {
+            "mesh_id": {"type": "string", "default": "rbxassetid://"},
+            "texture_id": {"type": "string", "default": "rbxassetid://"},
+            "material": {"type": "material", "default": "SmoothPlastic"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "can_collide": {"type": "bool", "default": "true"},
+            "cast_shadow": {"type": "bool", "default": "true"}
+        },
+        "inputs": [],
+        "outputs": {}
+    },
+    "msh_id_dynamic": {
+        "category": "proxy",
+        "default_size": [4.0, 4.0, 4.0],
+        "has_texture": True,
+        "icon": "msh_id_dynamic.png",
+        "attributes": {
+            "mesh_id": {"type": "string", "default": "rbxassetid://"},
+            "texture_id": {"type": "string", "default": "rbxassetid://"},
+            "material": {"type": "material", "default": "SmoothPlastic"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "can_collide": {"type": "bool", "default": "true"},
+            "cast_shadow": {"type": "bool", "default": "true"},
+            "start_enabled": {"type": "bool", "default": "true"},
+            "mallet_id": {"type": "string", "default": ""}
+        },
+        "inputs": [
+            "Enable", "Disable", "Toggle", "SetMaterial", "SetColor",
+            "SetMeshId", "SetTextureId", "Destroy"
+        ],
+        "outputs": {
+            "OnCollidedWith": "!collider",
+            "OnDestroyed": "!destroyer"
+        }
+    },
+    "msh_id_physics": {
+        "category": "proxy",
+        "default_size": [4.0, 4.0, 4.0],
+        "has_texture": True,
+        "icon": "msh_id_physics.png",
+        "attributes": {
+            "mesh_id": {"type": "string", "default": "rbxassetid://"},
+            "texture_id": {"type": "string", "default": "rbxassetid://"},
+            "collision_fidelity": {"type": "string", "default": "Default"},
+            "material": {"type": "material", "default": "SmoothPlastic"},
+            "color": {"type": "color", "default": "#FFFFFF"},
+            "can_collide": {"type": "bool", "default": "true"},
+            "cast_shadow": {"type": "bool", "default": "true"},
+            "mass": {"type": "float", "default": "10.0"},
+            "anchored": {"type": "bool", "default": "false"},
+            "start_enabled": {"type": "bool", "default": "true"},
+            "mallet_id": {"type": "string", "default": ""}
+        },
+        "inputs": [
+            "Enable", "Disable", "Toggle", "SetMaterial", "SetColor",
+            "Wake", "Sleep", "ApplyImpulse", "Destroy"
+        ],
+        "outputs": {
+            "OnCollidedWith": "!collider",
+            "OnDamaged": "!attacker",
+            "OnDestroyed": "!destroyer"
+        }
+    },
 
     "wrd_player_start": {
         "category": "proxy",
@@ -123,10 +317,6 @@ PROXY_REGISTRY = {
         "inputs": ["TurnOn", "TurnOff", "Toggle", "SetBrightness", "SetColor"],
         "outputs": {}
     },
-
-    # |¬-----------------¬|
-    # |¬------LOGIC------¬|
-    # |¬-----------------¬|
 
     "log_timer": {
         "category": "proxy",
@@ -163,13 +353,6 @@ PROXY_REGISTRY = {
         }
     },
 
-    # |¬-------------------¬|
-    # |¬------EFFECTS------¬|
-    # |¬-------------------¬|
-
-    #________________________
-    #reg fx
-
     "fx_particle": {
         "category": "proxy",
         "default_size": [1.0, 1.0, 1.0],
@@ -184,9 +367,6 @@ PROXY_REGISTRY = {
         "outputs": {}
     },
 
-    #________________________
-    #sound effects
-
     "sfx_regular": {
         "category": "proxy",
         "default_size": [1.0, 1.0, 1.0],
@@ -194,7 +374,7 @@ PROXY_REGISTRY = {
         "icon": "sfx_regular.png",
         "attributes": {
             "start_enabled": {"type": "bool", "default": "true"},
-            "sound_filepath": {"type": "string", "default": ""},
+            "sound_filepath": {"type": "filepath", "default": ""},
             "looped": {"type": "bool", "default": "false"},
             "mallet_id": {"type": "string", "default": ""}
         },
@@ -210,7 +390,7 @@ PROXY_REGISTRY = {
         "icon": "sfx_oneshot.png",
         "attributes": {
             "start_enabled": {"type": "bool", "default": "true"},
-            "sound_filepath": {"type": "string", "default": ""},
+            "sound_filepath": {"type": "filepath", "default": ""},
             "mallet_id": {"type": "string", "default": ""}
         },
         "inputs": ["PlaySound"],

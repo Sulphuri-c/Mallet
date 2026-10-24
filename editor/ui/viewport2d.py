@@ -2,7 +2,7 @@ import customtkinter as ctk
 import math
 import tkinter as tk
 import copy
-import uuid
+from core.proxies import generate_element_uuid
 
 
 class Viewport2D(ctk.CTkCanvas):
@@ -28,11 +28,11 @@ class Viewport2D(ctk.CTkCanvas):
         self.bind("<Configure>", self.on_configure)
         self.bind("<ButtonPress-3>", self.start_pan)
         self.bind("<B3-Motion>", self.do_pan)
+        self.bind("<ButtonRelease-3>", self.on_right_release)
 
         self.bind("<ButtonPress-1>", self.on_left_press)
         self.bind("<B1-Motion>", self.on_left_drag)
         self.bind("<ButtonRelease-1>", self.on_left_release)
-        self.bind("<Button-3>", self.on_right_press)
 
         self.bind("<MouseWheel>", self.zoom_view)
         self.bind("<Button-4>", self.zoom_view)
@@ -41,6 +41,8 @@ class Viewport2D(ctk.CTkCanvas):
         self.bind("<bracketleft>", self.decrease_grid)
         self.bind("<bracketright>", self.increase_grid)
         self.bind("c", self.center_view)
+        self.bind("<Delete>", self.delete_selected)
+        self.bind("<BackSpace>", self.delete_selected)
         self.bind("<Enter>", self.on_mouse_enter)
 
         self.last_mouse_x = 0
@@ -48,6 +50,7 @@ class Viewport2D(ctk.CTkCanvas):
         self.press_screen_x = 0
         self.press_screen_y = 0
         self.did_drag = False
+        self.did_right_drag = False
         self.clicked_already_selected = False
         self.drawing_start_x = 0
         self.drawing_start_y = 0
@@ -59,6 +62,12 @@ class Viewport2D(ctk.CTkCanvas):
         self.rotate_start_angle = 0.0
         self.initial_brush_rot = 0.0
         self.initialized_center = False
+
+    def is_volumetric_item(self, item):
+        if not item or "size" not in item:
+            return False
+        t = item.get("type", "")
+        return t.startswith("geom_") or t.startswith("msh_")
 
     def on_configure(self, event):
         if not self.initialized_center and event.width > 1 and event.height > 1:
@@ -72,6 +81,12 @@ class Viewport2D(ctk.CTkCanvas):
         if self.on_hover_callback:
             self.on_hover_callback(self.grid_size, self.view_type)
 
+    def delete_selected(self, event=None):
+        master_app = self.winfo_toplevel()
+        selected = getattr(master_app, "selected_brush", None)
+        if selected:
+            self.context_delete(selected)
+
     def screen_to_world(self, screen_x, screen_y):
         world_x = (screen_x - self.pan_x) / (self.pixels_per_stud * self.zoom)
         world_y = (screen_y - self.pan_y) / (self.pixels_per_stud * self.zoom)
@@ -81,6 +96,15 @@ class Viewport2D(ctk.CTkCanvas):
         screen_x = world_x * self.pixels_per_stud * self.zoom + self.pan_x
         screen_y = world_y * self.pixels_per_stud * self.zoom + self.pan_y
         return screen_x, screen_y
+
+    def get_item_screen_center(self, item):
+        px, py, pz = item["pos"][0], item["pos"][1], item["pos"][2]
+        if self.view_type == "2d top":
+            return self.world_to_screen(px, pz)
+        elif self.view_type == "2d front":
+            return self.world_to_screen(px, py)
+        else:
+            return self.world_to_screen(pz, py)
 
     def get_axes_coords(self, pos, size):
         x, y, z = pos[0], pos[1], pos[2]
@@ -280,9 +304,7 @@ class Viewport2D(ctk.CTkCanvas):
         self.tag_lower("grid_element")
         self.redraw_workspace_brushes()
 
-    def redraw_workspace_brushes(self):
-        master_app = self.winfo_toplevel()
-
+    def draw_wireframe_box(self, item, edge_color, diag_color):
         cube_edges = [
             (0, 1), (1, 2), (2, 3), (3, 0),
             (4, 5), (5, 6), (6, 7), (7, 4),
@@ -291,116 +313,181 @@ class Viewport2D(ctk.CTkCanvas):
         face_diagonals = [
             (0, 2), (4, 6), (0, 5), (2, 7), (0, 7), (1, 6)
         ]
+        verts = self.get_3d_transformed_screen_vertices(item)
+        for i1, i2 in face_diagonals:
+            self.create_line(
+                verts[i1][0], verts[i1][1], verts[i2][0], verts[i2][1],
+                fill=diag_color,
+                width=1,
+                tags="grid_element"
+            )
+        for i1, i2 in cube_edges:
+            self.create_line(
+                verts[i1][0], verts[i1][1], verts[i2][0], verts[i2][1],
+                fill=edge_color,
+                width=2,
+                tags="grid_element"
+            )
 
-        if hasattr(master_app, "workspace_brushes"):
-            selected_brush = getattr(master_app, "selected_brush", None)
+    def draw_io_connections(self, master_app, selected_item):
+        if not getattr(master_app, "app_settings", {}).get("show_io_lines", False):
+            return
 
-            for brush in master_app.workspace_brushes:
-                if brush == selected_brush:
+        all_items = getattr(master_app, "workspace_brushes", []) + getattr(master_app, "workspace_proxies", [])
+        target_map = {}
+        for it in all_items:
+            mid = it.get("mallet_id", "").strip()
+            if not mid and "attributes" in it:
+                mid = it["attributes"].get("mallet_id", "").strip()
+            if mid:
+                target_map.setdefault(mid, []).append(it)
+
+        for src in all_items:
+            io_list = src.get("io", [])
+            if not io_list:
+                continue
+
+            sx1, sy1 = self.get_item_screen_center(src)
+            for conn in io_list:
+                target_id = conn.get("target", "").strip()
+                if not target_id:
                     continue
-                verts = self.get_3d_transformed_screen_vertices(brush)
 
-                for i1, i2 in face_diagonals:
+                targets = target_map.get(target_id, [])
+                if not targets:
+                    if src == selected_item:
+                        self.create_oval(
+                            sx1 - 10, sy1 - 10, sx1 + 10, sy1 + 10,
+                            outline="#FF4444", width=2, tags="grid_element"
+                        )
+                    continue
+
+                for dst in targets:
+                    sx2, sy2 = self.get_item_screen_center(dst)
+                    is_active = (src == selected_item or dst == selected_item)
+                    line_color = "#00E5FF" if is_active else "#2A6B7C"
+                    line_width = 2 if is_active else 1
+
                     self.create_line(
-                        verts[i1][0], verts[i1][1], verts[i2][0], verts[i2][1],
-                        fill=self.colors.get("line", "#3b3b3b"),
-                        width=1,
+                        sx1, sy1, sx2, sy2,
+                        fill=line_color,
+                        width=line_width,
+                        dash=(6, 4),
+                        arrow=tk.LAST,
+                        arrowshape=(10, 12, 5),
                         tags="grid_element"
                     )
-                for i1, i2 in cube_edges:
-                    self.create_line(
-                        verts[i1][0], verts[i1][1], verts[i2][0], verts[i2][1],
-                        fill=self.colors.get("accent", "#7514ED"),
+
+                    if is_active:
+                        mx, my = (sx1 + sx2) / 2, (sy1 + sy2) / 2
+                        out_name = conn.get("output", "")
+                        inp_name = conn.get("input", "")
+                        self.create_text(
+                            mx, my - 8,
+                            text=f"{out_name} -> {inp_name}",
+                            fill="#00E5FF",
+                            font=("Arial", 8, "bold"),
+                            tags="grid_element"
+                        )
+
+    def redraw_workspace_brushes(self):
+        master_app = self.winfo_toplevel()
+        selected_item = getattr(master_app, "selected_brush", None)
+
+        if hasattr(master_app, "workspace_brushes"):
+            for brush in master_app.workspace_brushes:
+                if brush == selected_item:
+                    continue
+                self.draw_wireframe_box(
+                    brush,
+                    self.colors.get("accent", "#7514ED"),
+                    self.colors.get("line", "#3b3b3b")
+                )
+
+        if hasattr(master_app, "workspace_proxies"):
+            for proxy in master_app.workspace_proxies:
+                is_selected = (proxy == selected_item)
+                if self.is_volumetric_item(proxy):
+                    if not is_selected:
+                        self.draw_wireframe_box(proxy, "#AE79F0", self.colors.get("line", "#3b3b3b"))
+                    sx, sy = self.get_item_screen_center(proxy)
+                    proxy_type = proxy.get("type", "msh")
+                    short_label = proxy_type.upper()
+                    self.create_text(
+                        sx, sy,
+                        text=short_label,
+                        fill="#EEEEEE" if is_selected else "#AE79F0",
+                        font=("Arial", 8, "bold"),
+                        tags="grid_element"
+                    )
+                else:
+                    sx, sy = self.get_item_screen_center(proxy)
+                    color = "#EEEEEE" if is_selected else self.colors.get("accent", "#7514ED")
+                    size = 6
+
+                    self.create_rectangle(
+                        sx - size, sy - size,
+                        sx + size, sy + size,
+                        fill=color,
+                        outline="#222222",
                         width=2,
                         tags="grid_element"
                     )
 
-        if hasattr(master_app, "workspace_proxies"):
-            selected_proxy = getattr(master_app, "selected_brush", None)
-            for proxy in master_app.workspace_proxies:
-                is_selected = (proxy == selected_proxy)
-                px, py, pz = proxy["pos"][0], proxy["pos"][1], proxy["pos"][2]
-
-                if self.view_type == "2d top":
-                    sx, sy = self.world_to_screen(px, pz)
-                elif self.view_type == "2d front":
-                    sx, sy = self.world_to_screen(px, py)
-                else:
-                    sx, sy = self.world_to_screen(pz, py)
-
-                color = "#EEEEEE" if is_selected else self.colors.get("accent", "#7514ED")
-                size = 6
-
-                self.create_rectangle(
-                    sx - size, sy - size,
-                    sx + size, sy + size,
-                    fill=color,
-                    outline="#222222",
-                    width=2,
-                    tags="grid_element"
-                )
-
-                proxy_type = proxy.get("type", "proxy")
-                short_label = proxy_type.split("_")[-1][:3].upper()
-                self.create_text(
-                    sx, sy - 12,
-                    text=short_label,
-                    fill=color,
-                    font=("Arial", 9, "bold"),
-                    tags="grid_element"
-                )
-
-        selected_brush = getattr(master_app, "selected_brush", None)
-        if selected_brush and selected_brush in getattr(master_app, "workspace_brushes", []):
-            verts = self.get_3d_transformed_screen_vertices(selected_brush)
-
-            for i1, i2 in face_diagonals:
-                self.create_line(
-                    verts[i1][0], verts[i1][1], verts[i2][0], verts[i2][1],
-                    fill="#7F7F7F",
-                    width=1,
-                    tags="grid_element"
-                )
-            for i1, i2 in cube_edges:
-                self.create_line(
-                    verts[i1][0], verts[i1][1], verts[i2][0], verts[i2][1],
-                    fill="#EEEEEE",
-                    width=2,
-                    tags="grid_element"
-                )
-
-            pts = self.get_projected_2d_corners(selected_brush)
-            handles = self.get_rotated_transform_handles(pts)
-            hs = 6
-            mode = getattr(master_app, "transform_mode", "scale")
-
-            if mode == "scale":
-                for h_name, (hx, hy) in handles.items():
-                    self.create_rectangle(
-                        hx - hs, hy - hs,
-                        hx + hs, hy + hs,
-                        fill="#EEEEEE",
-                        outline="#222222",
-                        width=1,
+                    proxy_type = proxy.get("type", "proxy")
+                    short_label = proxy_type.split("_")[-1][:3].upper()
+                    self.create_text(
+                        sx, sy - 12,
+                        text=short_label,
+                        fill=color,
+                        font=("Arial", 9, "bold"),
                         tags="grid_element"
                     )
-            elif mode == "rotate":
-                for h_name in ["nw", "ne", "se", "sw"]:
-                    hx, hy = handles[h_name]
-                    self.create_oval(
-                        hx - hs - 1, hy - hs - 1,
-                        hx + hs + 1, hy + hs + 1,
-                        fill=self.colors.get("origin_y", "#68FF88"),
-                        outline="#222222",
-                        width=1,
-                        tags="grid_element"
-                    )
+
+        self.draw_io_connections(master_app, selected_item)
+
+        if selected_item and self.is_volumetric_item(selected_item):
+            all_volumetric = getattr(master_app, "workspace_brushes", []) + getattr(master_app, "workspace_proxies", [])
+            if selected_item in all_volumetric:
+                self.draw_wireframe_box(selected_item, "#EEEEEE", "#7F7F7F")
+
+                pts = self.get_projected_2d_corners(selected_item)
+                handles = self.get_rotated_transform_handles(pts)
+                hs = 6
+                mode = getattr(master_app, "transform_mode", "scale")
+
+                if mode == "scale":
+                    for h_name, (hx, hy) in handles.items():
+                        self.create_rectangle(
+                            hx - hs, hy - hs,
+                            hx + hs, hy + hs,
+                            fill="#EEEEEE",
+                            outline="#222222",
+                            width=1,
+                            tags="grid_element"
+                        )
+                elif mode == "rotate":
+                    for h_name in ["nw", "ne", "se", "sw"]:
+                        hx, hy = handles[h_name]
+                        self.create_oval(
+                            hx - hs - 1, hy - hs - 1,
+                            hx + hs + 1, hy + hs + 1,
+                            fill=self.colors.get("origin_y", "#68FF88"),
+                            outline="#222222",
+                            width=1,
+                            tags="grid_element"
+                        )
 
     def start_pan(self, event):
         self.last_mouse_x = event.x
         self.last_mouse_y = event.y
+        self.press_screen_x = event.x
+        self.press_screen_y = event.y
+        self.did_right_drag = False
 
     def do_pan(self, event):
+        if abs(event.x - self.press_screen_x) > 2 or abs(event.y - self.press_screen_y) > 2:
+            self.did_right_drag = True
         dx = event.x - self.last_mouse_x
         dy = event.y - self.last_mouse_y
         self.pan_x += dx
@@ -408,6 +495,10 @@ class Viewport2D(ctk.CTkCanvas):
         self.last_mouse_x = event.x
         self.last_mouse_y = event.y
         self.draw_grid()
+
+    def on_right_release(self, event):
+        if not self.did_right_drag:
+            self.show_context_menu_at(event)
 
     def zoom_view(self, event):
         if event.delta > 0 or event.keysym == "Button-4":
@@ -430,7 +521,7 @@ class Viewport2D(ctk.CTkCanvas):
             selected = getattr(master_app, "selected_brush", None)
             mode = getattr(master_app, "transform_mode", "scale")
 
-            if selected and "size" in selected and selected["type"].startswith("geom_"):
+            if selected and self.is_volumetric_item(selected):
                 pts = self.get_projected_2d_corners(selected)
                 handles = self.get_rotated_transform_handles(pts)
 
@@ -451,6 +542,8 @@ class Viewport2D(ctk.CTkCanvas):
             clicked_item = None
             if hasattr(master_app, "workspace_proxies"):
                 for proxy in master_app.workspace_proxies:
+                    if self.is_volumetric_item(proxy):
+                        continue
                     px, py, pz = proxy["pos"][0], proxy["pos"][1], proxy["pos"][2]
                     psx, psy = proxy["size"][0], proxy["size"][2]
                     if self.view_type == "2d top":
@@ -464,9 +557,14 @@ class Viewport2D(ctk.CTkCanvas):
                         clicked_item = proxy
                         break
 
-            if not clicked_item and hasattr(master_app, "workspace_brushes"):
+            if not clicked_item:
                 candidates = []
-                for idx, brush in enumerate(master_app.workspace_brushes):
+                volumetric_pool = [
+                                      p for p in getattr(master_app, "workspace_proxies", []) if
+                                      self.is_volumetric_item(p)
+                                  ] + getattr(master_app, "workspace_brushes", [])
+
+                for idx, brush in enumerate(volumetric_pool):
                     verts = self.get_3d_transformed_screen_vertices(brush)
                     xs = [v[0] for v in verts]
                     ys = [v[1] for v in verts]
@@ -488,8 +586,7 @@ class Viewport2D(ctk.CTkCanvas):
                 self.dragging_brush = clicked_item
                 if hasattr(master_app, "save_history_state"):
                     master_app.save_history_state()
-                if "size" in clicked_item and len(clicked_item["size"]) == 3 and clicked_item["type"].startswith(
-                        "geom_"):
+                if self.is_volumetric_item(clicked_item):
                     x1, y1, x2, y2 = self.get_axes_coords(clicked_item["pos"], clicked_item["size"])
                     self.drag_offset_x = x1 - wx
                     self.drag_offset_y = y1 - wy
@@ -530,7 +627,35 @@ class Viewport2D(ctk.CTkCanvas):
             self.drawing_start_x = round(wx / self.grid_size) * self.grid_size
             self.drawing_start_y = round(wy / self.grid_size) * self.grid_size
 
-    def on_right_press(self, event):
+        elif active_tool == "MAT":
+            clicked_brush = None
+            if hasattr(master_app, "workspace_brushes"):
+                candidates = []
+                for idx, brush in enumerate(master_app.workspace_brushes):
+                    verts = self.get_3d_transformed_screen_vertices(brush)
+                    xs = [v[0] for v in verts]
+                    ys = [v[1] for v in verts]
+                    if min(xs) <= event.x <= max(xs) and min(ys) <= event.y <= max(ys):
+                        candidates.append((idx, brush))
+                if candidates:
+                    clicked_brush = candidates[0][1]
+
+            if clicked_brush and "materials" in clicked_brush:
+                if hasattr(master_app, "save_history_state"):
+                    master_app.save_history_state()
+
+                face_to_paint = "Top"
+                if self.view_type == "2d front":
+                    face_to_paint = "Front"
+                elif self.view_type == "2d side":
+                    face_to_paint = "Left"
+
+                active_mat = getattr(master_app, "current_paint_material", "SmoothPlastic")
+                clicked_brush["materials"][face_to_paint] = active_mat
+                clicked_brush["material"] = active_mat
+                self.draw_grid()
+
+    def show_context_menu_at(self, event):
         master_app = self.winfo_toplevel()
         active_tool = getattr(master_app, "active_tool", "PTR")
         wx, wy = self.screen_to_world(event.x, event.y)
@@ -539,17 +664,25 @@ class Viewport2D(ctk.CTkCanvas):
         if active_tool == "PTR":
             if hasattr(master_app, "workspace_proxies"):
                 for proxy in master_app.workspace_proxies:
-                    px, py, pz = proxy["pos"][0], proxy["pos"][1], proxy["pos"][2]
-                    psx, psy = proxy["size"][0], proxy["size"][2]
-                    if self.view_type == "2d top":
-                        x1, y1, x2, y2 = px - psx / 2, pz - psy / 2, px + psx / 2, pz + psy / 2
-                    elif self.view_type == "2d front":
-                        x1, y1, x2, y2 = px - psx / 2, py - psy / 2, px + psx / 2, py + psy / 2
+                    if self.is_volumetric_item(proxy):
+                        verts = self.get_3d_transformed_screen_vertices(proxy)
+                        xs = [v[0] for v in verts]
+                        ys = [v[1] for v in verts]
+                        if min(xs) <= event.x <= max(xs) and min(ys) <= event.y <= max(ys):
+                            clicked_item = proxy
+                            break
                     else:
-                        x1, y1, x2, y2 = pz - psx / 2, py - psy / 2, pz + psx / 2, py + psy / 2
-                    if x1 <= wx <= x2 and y1 <= wy <= y2:
-                        clicked_item = proxy
-                        break
+                        px, py, pz = proxy["pos"][0], proxy["pos"][1], proxy["pos"][2]
+                        psx, psy = proxy["size"][0], proxy["size"][2]
+                        if self.view_type == "2d top":
+                            x1, y1, x2, y2 = px - psx / 2, pz - psy / 2, px + psx / 2, pz + psy / 2
+                        elif self.view_type == "2d front":
+                            x1, y1, x2, y2 = px - psx / 2, py - psy / 2, px + psx / 2, py + psy / 2
+                        else:
+                            x1, y1, x2, y2 = pz - psx / 2, py - psy / 2, pz + psx / 2, py + psy / 2
+                        if x1 <= wx <= x2 and y1 <= wy <= y2:
+                            clicked_item = proxy
+                            break
 
             if not clicked_item and hasattr(master_app, "workspace_brushes"):
                 for brush in master_app.workspace_brushes:
@@ -560,9 +693,6 @@ class Viewport2D(ctk.CTkCanvas):
                         clicked_item = brush
                         break
 
-        self.show_context_menu(event, clicked_item)
-
-    def show_context_menu(self, event, clicked_item):
         menu = tk.Menu(self, tearoff=0, bg="#333333", fg="#EEEEEE", activebackground="#7514ED",
                        activeforeground="#EEEEEE")
         if clicked_item:
@@ -595,7 +725,6 @@ class Viewport2D(ctk.CTkCanvas):
             if hasattr(master_app, "save_history_state"):
                 master_app.save_history_state()
             new_item = copy.deepcopy(master_app.clipboard_item)
-            from core.proxies import generate_element_uuid
             new_item["uuid"] = generate_element_uuid(new_item.get("type", "geom_static"))
             new_item["pos"][0] += 4
             new_item["pos"][2] += 4
@@ -633,7 +762,7 @@ class Viewport2D(ctk.CTkCanvas):
         mode = getattr(master_app, "transform_mode", "scale")
 
         if active_tool == "PTR" and self.dragging_brush:
-            if "size" not in self.dragging_brush or not self.dragging_brush["type"].startswith("geom_"):
+            if not self.is_volumetric_item(self.dragging_brush):
                 if self.view_type == "2d top":
                     self.dragging_brush["pos"][0] = round(wx / self.grid_size) * self.grid_size
                     self.dragging_brush["pos"][2] = round(wy / self.grid_size) * self.grid_size
@@ -663,7 +792,7 @@ class Viewport2D(ctk.CTkCanvas):
                 if snap_setting == "Off":
                     new_angle = raw_angle
                 else:
-                    snap_val = float(snap_setting)
+                    snap_val = float(str(snap_setting).replace("°", ""))
                     new_angle = round(raw_angle / snap_val) * snap_val
 
                 self.set_brush_angle(self.dragging_brush, new_angle)
@@ -719,7 +848,7 @@ class Viewport2D(ctk.CTkCanvas):
         if active_tool == "PTR":
             if self.clicked_already_selected and not self.did_drag and not self.active_handle:
                 selected = getattr(master_app, "selected_brush", None)
-                if selected and selected.get("type", "").startswith("geom_"):
+                if selected and self.is_volumetric_item(selected):
                     mode = getattr(master_app, "transform_mode", "scale")
                     master_app.transform_mode = "rotate" if mode == "scale" else "scale"
                     for vp in master_app.viewports:

@@ -1,0 +1,308 @@
+{
+    "version": "1.2",
+    "world": {
+        "clock_time": "14.5",
+        "gravity": "196.2",
+        "max_players": "1",
+        "enable_atmosphere": true,
+        "atmosphere_density": "1",
+        "sun_elevation": 45.0,
+        "sun_azimuth": 0.0
+    },
+    "geometry": [
+        {
+            "uuid": "geom_static-2a9f895f",
+            "mallet_id": "",
+            "type": "geom_static",
+            "parent": "workspace",
+            "pos": [
+                0.5,
+                0.5,
+                0.0
+            ],
+            "size": [
+                15.0,
+                1.0,
+                10.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "material": "Concrete",
+            "attributes": {
+                "material": "Concrete",
+                "can_collide": "true",
+                "cast_shadow": "true"
+            },
+            "io": []
+        },
+        {
+            "uuid": "geom_static-05128a85",
+            "mallet_id": "",
+            "type": "geom_static",
+            "parent": "workspace",
+            "pos": [
+                0.5,
+                -4.5,
+                -5.5
+            ],
+            "size": [
+                15,
+                9.0,
+                1.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "material": "Concrete",
+            "attributes": {
+                "material": "Concrete",
+                "can_collide": "true",
+                "cast_shadow": "true"
+            },
+            "io": []
+        },
+        {
+            "uuid": "geom_dynamic-da3b9acd",
+            "mallet_id": "",
+            "type": "geom_dynamic",
+            "parent": "workspace",
+            "pos": [
+                0.5,
+                -4.5,
+                5.5
+            ],
+            "size": [
+                15.0,
+                9.0,
+                1.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "material": "Concrete",
+            "attributes": {
+                "material": "Concrete",
+                "can_collide": "true",
+                "cast_shadow": "true",
+                "mallet_id": ""
+            },
+            "io": [
+                {
+                    "output": "OnCollidedWith",
+                    "target": "light",
+                    "input": "TurnOn",
+                    "param": "",
+                    "delay": "0.0"
+                }
+            ]
+        },
+        {
+            "uuid": "geom_static-492062f8",
+            "mallet_id": "",
+            "type": "geom_static",
+            "parent": "workspace",
+            "pos": [
+                -7.5,
+                -4.5,
+                0.0
+            ],
+            "size": [
+                1.0,
+                9.0,
+                10.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "material": "Concrete",
+            "attributes": {
+                "material": "Concrete",
+                "can_collide": "true",
+                "cast_shadow": "true"
+            },
+            "io": []
+        },
+        {
+            "uuid": "geom_static-ee198b93",
+            "mallet_id": "",
+            "type": "geom_static",
+            "parent": "workspace",
+            "pos": [
+                8.5,
+                -4.5,
+                0.0
+            ],
+            "size": [
+                1.0,
+                9.0,
+                10.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "material": "Concrete",
+            "attributes": {
+                "material": "Concrete",
+                "can_collide": "true",
+                "cast_shadow": "true"
+            },
+            "io": []
+        },
+        {
+            "uuid": "geom_static-8d7648a3",
+            "mallet_id": "",
+            "type": "geom_static",
+            "parent": "workspace",
+            "pos": [
+                -3.5,
+                -10.5,
+                0.0
+            ],
+            "size": [
+                9.0,
+                1.0,
+                10.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                345.0
+            ],
+            "material": "Concrete",
+            "attributes": {
+                "material": "Concrete",
+                "can_collide": "true",
+                "cast_shadow": "true"
+            },
+            "io": []
+        },
+        {
+            "uuid": "geom_static-7084d30d",
+            "mallet_id": "",
+            "type": "geom_static",
+            "parent": "workspace",
+            "pos": [
+                4.5,
+                -10.5,
+                0.0
+            ],
+            "size": [
+                9.0,
+                1.0,
+                10.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                195.0
+            ],
+            "material": "Concrete",
+            "attributes": {
+                "material": "Concrete",
+                "can_collide": "true",
+                "cast_shadow": "true"
+            },
+            "io": []
+        },
+        {
+            "uuid": "geom_static-d8c6f0c6",
+            "mallet_id": "",
+            "type": "geom_static",
+            "parent": "workspace",
+            "pos": [
+                5.5,
+                -11.5,
+                -1.5
+            ],
+            "size": [
+                3.0,
+                5.0,
+                3.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "material": "Concrete",
+            "attributes": {
+                "material": "Concrete",
+                "can_collide": "true",
+                "cast_shadow": "true"
+            },
+            "io": []
+        }
+    ],
+    "proxies": [
+        {
+            "uuid": "wrd_player_start-7b7f31b9",
+            "mallet_id": "",
+            "type": "wrd_player_start",
+            "parent": "workspace",
+            "pos": [
+                0.0,
+                0,
+                0
+            ],
+            "size": [
+                2.0,
+                4.0,
+                2.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "material": "Plastic",
+            "attributes": {
+                "team": "Neutral",
+                "start_enabled": "true",
+                "mallet_id": ""
+            },
+            "io": []
+        },
+        {
+            "uuid": "wrd_light-cb1388ce",
+            "mallet_id": "light",
+            "type": "wrd_light",
+            "parent": "workspace",
+            "pos": [
+                0,
+                -8,
+                0
+            ],
+            "size": [
+                2.0,
+                4.0,
+                2.0
+            ],
+            "rot": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "material": "Plastic",
+            "attributes": {
+                "brightness": "1.0",
+                "color": "#FFFFFF",
+                "range": "16.0",
+                "shadows": "true",
+                "start_enabled": "false",
+                "mallet_id": "light"
+            },
+            "io": []
+        }
+    ]
+}
